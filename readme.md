@@ -1,4 +1,4 @@
-Stewart Platform
+Valve tests for IEC 60534-2-3
 ==============
 
 ##Wiring
