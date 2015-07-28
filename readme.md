@@ -8,7 +8,6 @@ Valve tests for IEC 60534-2-3
 
 
 ##TODO
-- Filter data
 - Stepper valve
 - Error checking
 

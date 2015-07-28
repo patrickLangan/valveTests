@@ -9,6 +9,15 @@ void signalCatcher (int null)
 	longjmp (buf, 1);
 }
 
+
+int compareInts (const void *a, const void *b)
+{
+	const int *fa = (const int *)a;
+	const int *fb = (const int *)b;
+
+	return (*fa > *fb) - (*fa < *fb);
+}
+
 /*
  * Honeywell PX2AN2XX150PAAAX analog pressure sensor: http://www.farnell.com/datasheets/1514338.pdf
  * Adafruit ADS1015 ADC: http://www.adafruit.com/products/1083
@@ -16,7 +25,10 @@ void signalCatcher (int null)
  */
 float pressureRead (int handle, int channel)
 {
+	const int sampleSize = 10;
+	int array[sampleSize];
 	char buffer[3];
+	int i;
 
 	buffer[0] = 0x01;
 
@@ -42,9 +54,14 @@ float pressureRead (int handle, int channel)
 	i2c_write (handle, buffer, 3);
 	i2c_write (handle, buffer, 3);
 
-	i2c_write_byte (handle, 0x00);
-	i2c_read (handle, buffer, 2);
-	return (float)(((int)buffer[0] << 8 | (int)buffer[1]) >> 4) * 0.1125 - 18.75;
+	for (i = 0; i < sampleSize; i++) {
+		i2c_write_byte (handle, 0x00);
+		i2c_read (handle, buffer, 2);
+		array[i] = (int)buffer[0] << 8 | (int)buffer[1];
+	}
+
+	qsort (array, sampleSize, sizeof(*array), compareInts);
+	return (float)(array[sampleSize / 2] >> 4) * 0.1125 - 18.75;
 }
 
 /*
@@ -74,16 +91,24 @@ int tempInit (int bus, int address)
 
 float tempRead (int handle)
 {
+	const int sampleSize = 30;
+	int array[sampleSize];
 	char buffer[3];
+	int i;
 
 	buffer[0] = 0x05;
 	buffer[1] = 0x0A;
 	buffer[2] = 0xAA;
 	i2c_write (handle, buffer, 3);
 
-	i2c_write_byte (handle, 0x04);
-	i2c_read (handle, buffer, 2);
-	return (float)((int)buffer[0] << 8 | (int)buffer[1]) * 0.00625 - 25;
+	for (i = 0; i < sampleSize; i++) {
+		i2c_write_byte (handle, 0x04);
+		i2c_read (handle, buffer, 2);
+		array[i] = (int)buffer[0] << 8 | (int)buffer[1];
+	}
+
+	qsort (array, sampleSize, sizeof(*array), compareInts);
+	return (float)array[sampleSize / 2] * 0.00625 - 25;
 }
 
 int main (int argc, char **argv)
