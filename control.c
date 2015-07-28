@@ -40,18 +40,60 @@ float pressureRead (int handle, int channel)
 
 	buffer[2] = 0x83;
 	i2c_write (handle, buffer, 3);
+	i2c_write (handle, buffer, 3);
 
 	i2c_write_byte (handle, 0x00);
 	i2c_read (handle, buffer, 2);
 	return (float)(((int)buffer[0] << 8 | (int)buffer[1]) >> 4) * 0.1125 - 18.75;
 }
 
+/*
+ * Automation Direct TTD25N-20-0100C-H temperature sensor: http://www.automationdirect.com/static/specs/prosensettrans.pdf
+ * Adafruit INA219 Current Monitor: http://www.adafruit.com/products/904
+ * Constants found from adafruit source code: https://github.com/adafruit/Adafruit_INA219
+ */
+int tempInit (int bus, int address)
+{
+	int handle;
+	char buffer[3];
+
+	handle = i2c_open (bus, address);
+
+	buffer[0] = 0x05;
+	buffer[1] = 0x0A;
+	buffer[2] = 0xAA;
+	i2c_write (handle, buffer, 3);
+
+	buffer[0] = 0x00;
+	buffer[1] = 0x3C;
+	buffer[2] = 0x1F;
+	i2c_write (handle, buffer, 3);
+
+	return handle;
+}
+
+float tempRead (int handle)
+{
+	char buffer[3];
+
+	buffer[0] = 0x05;
+	buffer[1] = 0x0A;
+	buffer[2] = 0xAA;
+	i2c_write (handle, buffer, 3);
+
+	i2c_write_byte (handle, 0x04);
+	i2c_read (handle, buffer, 2);
+	return (float)((int)buffer[0] << 8 | (int)buffer[1]) * 0.00625 - 25;
+}
+
 int main (int argc, char **argv)
 {
 	int pressureHandle;
+	int tempHandle;
 
 	float pressure1;
 	float pressure2;
+	float temp;
 
 	if (setjmp (buf))
 		goto shutdown;
@@ -59,12 +101,15 @@ int main (int argc, char **argv)
 	signal (SIGINT, signalCatcher);
 
 	pressureHandle = i2c_open (1, 0x48);
+	tempHandle = tempInit (1, 0x40);
 
 	while (1) {
 		pressure1 = pressureRead (pressureHandle, 0);
 		pressure2 = pressureRead (pressureHandle, 1);
 
-		printf ("%f, %f\n", pressure1, pressure2);
+		temp = tempRead (tempHandle);
+
+		printf ("%f, %f, %f\n", temp, pressure1, pressure2);
 	}
 
 shutdown:
