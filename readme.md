@@ -6,8 +6,14 @@ Valve tests for IEC 60534-2-3
 	    Clock:  P9_19
 	    Data:   P9_20
 
+	Control Valve - GPIO2
+	    P8_18   gpio2_1   gpio65  0x08c
+	    P8_7    gpio2_2   gpio66  0x090
+
 
 ##TODO
+- Calibration
 - Stepper valve
 - Error checking
+- General cleanup
 

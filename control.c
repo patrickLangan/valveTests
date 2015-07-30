@@ -4,6 +4,11 @@
 
 static jmp_buf buf;
 
+struct gpioInfo {
+	int pin;
+	FILE *file;
+};
+
 void signalCatcher (int null)
 {
 	longjmp (buf, 1);
@@ -111,6 +116,37 @@ float tempRead (int handle)
 	return (float)array[sampleSize / 2] * 0.00625 - 25;
 }
 
+
+void gpioOutputInit (struct gpioInfo *gpio, char *value)
+{
+        char gpioPath[30];
+
+        sprintf (gpioPath, "/sys/class/gpio/gpio%d/value", gpio->pin);
+        gpio->file = fopen (gpioPath, "w");
+        fprintf (gpio->file, value);
+        fflush (gpio->file);
+}
+
+
+void gpioOutputTerminate (struct gpioInfo *gpio, char *value)
+{
+        fprintf (gpio->file, value);
+        fclose (gpio->file);
+}
+
+void gpioOutput (struct gpioInfo *gpio, int value)
+{
+	switch (value) {
+	case 0: 
+		fprintf (gpio->file, "0");
+		break;
+	case 1: 
+		fprintf (gpio->file, "1");
+	}
+
+	fflush (gpio->file);
+}
+
 int main (int argc, char **argv)
 {
 	int pressureHandle;
@@ -120,6 +156,11 @@ int main (int argc, char **argv)
 	float pressure2;
 	float temp;
 
+	struct gpioInfo stepperPul = {65};
+	struct gpioInfo stepperDir = {66};
+
+	int i;
+
 	if (setjmp (buf))
 		goto shutdown;
 
@@ -127,6 +168,9 @@ int main (int argc, char **argv)
 
 	pressureHandle = i2c_open (1, 0x48);
 	tempHandle = tempInit (1, 0x40);
+
+	gpioOutputInit (&stepperPul, "0");
+	gpioOutputInit (&stepperDir, "0");
 
 	while (1) {
 		pressure1 = pressureRead (pressureHandle, 0);
@@ -138,6 +182,8 @@ int main (int argc, char **argv)
 	}
 
 shutdown:
+	gpioOutputTerminate (&stepperPul, "0");
+	gpioOutputTerminate (&stepperDir, "0");
 
 	return 0;
 }

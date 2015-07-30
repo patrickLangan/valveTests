@@ -1,0 +1,35 @@
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "ti,beaglebone", "ti,beaglebone-black";
+	part_number = "gpio-enable";
+	version = "00A0";
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+
+		__overlay__ {
+			gpio_enable: pinmux_gpio_enable {
+				pinctrl-single,pins = <	0x08c 0x7
+							0x090 0x7
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+                target = <&ocp>;
+
+                __overlay__ {
+                        gpio_enable_pinmux {
+                                compatible = "bone-pinmux-helper";
+                                status = "okay";
+                                pinctrl-names = "default";
+                                pinctrl-0 = <&gpio_enable>;
+                        };
+                };
+        };
+
+};
+
