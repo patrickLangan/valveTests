@@ -147,6 +147,31 @@ void gpioOutput (struct gpioInfo *gpio, int value)
 	fflush (gpio->file);
 }
 
+/*
+ * Moves the stepper-valve a given number of steps, with a given period of time (in uSecs) between steps
+ */
+void stepperValve (struct gpioInfo *pul, struct gpioInfo *dir, int steps, int period)
+{
+	period /= 2;
+
+	if (steps < 0) {
+		steps = abs (steps);
+		fprintf (dir->file, "0");
+	} else {
+		fprintf (dir->file, "1");
+	}
+	fflush (dir->file);
+
+	for (; steps > 0; steps--) {
+		fprintf (pul->file, "1");
+		fflush (pul->file);
+		usleep (period);
+		fprintf (pul->file, "0");
+		fflush (pul->file);
+		usleep (period);
+	}
+}
+
 int main (int argc, char **argv)
 {
 	int pressureHandle;
@@ -172,6 +197,7 @@ int main (int argc, char **argv)
 	gpioOutputInit (&stepperPul, "0");
 	gpioOutputInit (&stepperDir, "0");
 
+/*
 	while (1) {
 		pressure1 = pressureRead (pressureHandle, 0);
 		pressure2 = pressureRead (pressureHandle, 1);
@@ -179,6 +205,12 @@ int main (int argc, char **argv)
 		temp = tempRead (tempHandle);
 
 		printf ("%f, %f, %f\n", temp, pressure1, pressure2);
+	}
+*/
+
+	while (1) {
+		stepperValve (&stepperPul, &stepperDir, 40, 10000);
+		stepperValve (&stepperPul, &stepperDir, -40, 10000);
 	}
 
 shutdown:
