@@ -24,16 +24,12 @@ int compareInts (const void *a, const void *b)
 }
 
 /*
- * Honeywell PX2AN2XX150PAAAX analog pressure sensor: http://www.farnell.com/datasheets/1514338.pdf
  * Adafruit ADS1015 ADC: http://www.adafruit.com/products/1083
  * Constants found from adafruit source code: https://github.com/adafruit/Adafruit_ADS1X15
  */
-float pressureRead (int handle, int channel)
+int adcRead (int handle, int channel)
 {
-	const int sampleSize = 10;
-	int array[sampleSize];
 	char buffer[3];
-	int i;
 
 	buffer[0] = 0x01;
 
@@ -51,7 +47,7 @@ float pressureRead (int handle, int channel)
 		buffer[1] = 0xF1;
 		break;
 	default:
-		fprintf (stderr, "pressureRead() expects a channel number between 0 and 3.\n");
+		fprintf (stderr, "adcRead() expects a channel number between 0 and 3.\n");
 		break;
 	};
 
@@ -59,11 +55,22 @@ float pressureRead (int handle, int channel)
 	i2c_write (handle, buffer, 3);
 	i2c_write (handle, buffer, 3);
 
-	for (i = 0; i < sampleSize; i++) {
-		i2c_write_byte (handle, 0x00);
-		i2c_read (handle, buffer, 2);
-		array[i] = (int)buffer[0] << 8 | (int)buffer[1];
-	}
+	i2c_write_byte (handle, 0x00);
+	i2c_read (handle, buffer, 2);
+	return (int)buffer[0] << 8 | (int)buffer[1];
+}
+
+/*
+ * Honeywell PX2AN2XX150PAAAX analog pressure sensor: http://www.farnell.com/datasheets/1514338.pdf
+ */
+float pressureRead (int handle, int channel)
+{
+	const int sampleSize = 10;
+	int array[sampleSize];
+	int i;
+
+	for (i = 0; i < sampleSize; i++)
+		array[i] = adcRead (handle, channel);
 
 	qsort (array, sampleSize, sizeof(*array), compareInts);
 	return (float)(array[sampleSize / 2] >> 4) * 0.1125 - 18.75;
@@ -197,7 +204,6 @@ int main (int argc, char **argv)
 	gpioOutputInit (&stepperPul, "0");
 	gpioOutputInit (&stepperDir, "0");
 
-/*
 	while (1) {
 		pressure1 = pressureRead (pressureHandle, 0);
 		pressure2 = pressureRead (pressureHandle, 1);
@@ -206,12 +212,13 @@ int main (int argc, char **argv)
 
 		printf ("%f, %f, %f\n", temp, pressure1, pressure2);
 	}
-*/
 
+/*
 	while (1) {
 		stepperValve (&stepperPul, &stepperDir, 40, 10000);
 		stepperValve (&stepperPul, &stepperDir, -40, 10000);
 	}
+*/
 
 shutdown:
 	gpioOutputTerminate (&stepperPul, "0");
