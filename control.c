@@ -77,6 +77,28 @@ float pressureRead (int handle, int channel)
 }
 
 /*
+ * Alicat Scientific M-250SLPM-D compressed air flow sensor: http://www.alicat.com/documents/specifications/Alicat_Mass_Meter_Specs.pdf
+ */
+float flowRead (int handle, int channel)
+{
+	const int sampleSize = 10;
+	int array[sampleSize];
+	float ret;
+	int i;
+
+	for (i = 0; i < sampleSize; i++)
+		array[i] = adcRead (handle, channel);
+
+	qsort (array, sampleSize, sizeof(*array), compareInts);
+
+	ret = (float)(array[sampleSize / 2] >> 4) * 0.1500596393 + 0.2813477731;
+	if (ret > 300.0)
+		ret = 0;
+
+	return ret;
+}
+
+/*
  * Automation Direct TTD25N-20-0100C-H temperature sensor: http://www.automationdirect.com/static/specs/prosensettrans.pdf
  * Adafruit INA219 Current Monitor: http://www.adafruit.com/products/904
  * Constants found from adafruit source code: https://github.com/adafruit/Adafruit_INA219
@@ -181,11 +203,12 @@ void stepperValve (struct gpioInfo *pul, struct gpioInfo *dir, int steps, int pe
 
 int main (int argc, char **argv)
 {
-	int pressureHandle;
+	int adcHandle;
 	int tempHandle;
 
 	float pressure1;
 	float pressure2;
+	float flow;
 	float temp;
 
 	struct gpioInfo stepperPul = {65};
@@ -198,19 +221,21 @@ int main (int argc, char **argv)
 
 	signal (SIGINT, signalCatcher);
 
-	pressureHandle = i2c_open (1, 0x48);
+	adcHandle = i2c_open (1, 0x48);
 	tempHandle = tempInit (1, 0x40);
 
 	gpioOutputInit (&stepperPul, "0");
 	gpioOutputInit (&stepperDir, "0");
 
 	while (1) {
-		pressure1 = pressureRead (pressureHandle, 0);
-		pressure2 = pressureRead (pressureHandle, 1);
+		pressure1 = pressureRead (adcHandle, 0);
+		pressure2 = pressureRead (adcHandle, 1);
+
+		flow = flowRead (adcHandle, 2);
 
 		temp = tempRead (tempHandle);
 
-		printf ("%f, %f, %f\n", temp, pressure1, pressure2);
+		printf ("%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
 	}
 
 /*
