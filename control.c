@@ -228,12 +228,12 @@ int main (int argc, char **argv)
 	gpioOutputInit (&stepperDir, "0");
 
 	while (1) {
-		pressure1 = pressureRead (adcHandle, 0);
-		pressure2 = pressureRead (adcHandle, 1);
+		pressure1 = pressureRead (adcHandle, 0) * 0.9830463707 - 0.5100681364;
+		pressure2 = pressureRead (adcHandle, 1) * 0.9799264548 - 0.4912727444;
 
 		flow = flowRead (adcHandle, 2);
 
-		temp = tempRead (tempHandle);
+		temp = tempRead (tempHandle) + 1.0016;
 
 		printf ("%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
 	}
