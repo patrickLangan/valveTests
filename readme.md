@@ -12,7 +12,6 @@ Valve tests for IEC 60534-2-3
 
 
 ##TODO
-- time output
 - Error checking
 - General cleanup
 

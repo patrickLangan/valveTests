@@ -3,6 +3,7 @@
 #include <setjmp.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <sys/time.h>
 
 static jmp_buf buf;
 
@@ -225,6 +226,9 @@ int main (int argc, char **argv)
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 100000;
 
+	struct timeval curTimeval;
+	double curTime;
+
 	int i;
 
 	if (setjmp (buf))
@@ -261,8 +265,12 @@ int main (int argc, char **argv)
 						pressure2 = pressureRead (adcHandle, 1) * 0.9799264548 - 0.4912727444;
 						flow = flowRead (adcHandle, 2);
 						temp = tempRead (tempHandle) + 1.0016;
-						fprintf (recFile, "%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
-						printf ("%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
+
+						gettimeofday (&curTimeval, NULL);
+						curTime = (double)curTimeval.tv_sec + (double)curTimeval.tv_usec / 1e6;
+
+						fprintf (recFile, "%lf, %f, %f, %f, %f\n", curTime, temp, pressure1, pressure2, flow);
+						printf ("%lf, %f, %f, %f, %f\n", curTime, temp, pressure1, pressure2, flow);
 
 						fflush (stdout);
 						FD_ZERO (&s);
