@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <unistd.h>
+#include <sys/select.h>
 
 static jmp_buf buf;
 
@@ -214,6 +216,15 @@ int main (int argc, char **argv)
 	struct gpioInfo stepperPul = {65};
 	struct gpioInfo stepperDir = {66};
 
+	char command[255];
+	int setPos;
+	FILE *recFile;
+
+	fd_set s;
+	struct timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 100000;
+
 	int i;
 
 	if (setjmp (buf))
@@ -228,22 +239,49 @@ int main (int argc, char **argv)
 	gpioOutputInit (&stepperDir, "0");
 
 	while (1) {
-		pressure1 = pressureRead (adcHandle, 0) * 0.9830463707 - 0.5100681364;
-		pressure2 = pressureRead (adcHandle, 1) * 0.9799264548 - 0.4912727444;
+		printf (">");
+		if (scanf ("%s", command) == 1) {
+			if (strcmp (command, "help") == 0) {
+				puts ("Accepted commands are:");
+				puts ("set [valve_position]\tmoves the stepper-valve by the specified number of steps");
+				puts ("rec [file]\t\twrites sensor data to file untill enter is pressed");
+				puts ("exit\t\t\tsafely shuts down the program (as does cntrl-c)");
+			} else if (strcmp (command, "set") == 0) {
+				if (scanf ("%d", &setPos) == 1) {
+					printf ("Moving %d steps\n", setPos);
+					stepperValve (&stepperPul, &stepperDir, setPos, 10000);
+				} else {
+					puts ("Bad input, enter \"help\" for list of accepted commands");
+				}
+			} else if (strcmp (command, "rec") == 0) {
+				if (scanf ("%s", command) == 1) {
+					recFile = fopen (command, "w");
+					do {
+						pressure1 = pressureRead (adcHandle, 0) * 0.9830463707 - 0.5100681364;
+						pressure2 = pressureRead (adcHandle, 1) * 0.9799264548 - 0.4912727444;
+						flow = flowRead (adcHandle, 2);
+						temp = tempRead (tempHandle) + 1.0016;
+						fprintf (recFile, "%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
+						printf ("%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
 
-		flow = flowRead (adcHandle, 2);
-
-		temp = tempRead (tempHandle) + 1.0016;
-
-		printf ("%f, %f, %f, %f\n", temp, pressure1, pressure2, flow);
+						fflush (stdout);
+						FD_ZERO (&s);
+						FD_SET (STDIN_FILENO, &s);
+						select (STDIN_FILENO + 1, &s, NULL, NULL, &timeout);
+					} while (FD_ISSET (STDIN_FILENO, &s) == 0);
+					fclose (recFile);
+				} else {
+					puts ("Bad input, enter \"help\" for list of accepted commands");
+				}
+			} else if (strcmp (command, "exit") == 0) {
+				goto shutdown;
+			} else {
+				puts ("Bad input, enter \"help\" for list of accepted commands");
+			}
+		} else {
+			puts ("Bad input, enter \"help\" for list of accepted commands");
+		}
 	}
-
-/*
-	while (1) {
-		stepperValve (&stepperPul, &stepperDir, 40, 10000);
-		stepperValve (&stepperPul, &stepperDir, -40, 10000);
-	}
-*/
 
 shutdown:
 	gpioOutputTerminate (&stepperPul, "0");

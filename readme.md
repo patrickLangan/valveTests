@@ -13,7 +13,6 @@ Valve tests for IEC 60534-2-3
 
 ##TODO
 - time output
-- Stepper valve
 - Error checking
 - General cleanup
 
